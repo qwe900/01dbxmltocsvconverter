@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Xml;
 using System.Xml.Linq;
 using System.Linq;
@@ -41,6 +41,7 @@ namespace CmgConverter
                 {
                     string id = child.Attribute("val").Value;
                     string typeAndFamilyText = child.Element("TypeAndFamilyText").Value;
+                    if (typeAndFamilyText != "MP3") {
                     string place = child.Element("Place").Value;
                     string csvFileName = $"{id}_{place}_{typeAndFamilyText}.csv";
                     string csvOutputPath = Path.Combine(outputPath, MakeFileName(csvFileName));
@@ -60,10 +61,11 @@ namespace CmgConverter
                             var floatValue = BitConverter.ToSingle(bytes, i);
                             var floatTime = dtBegin.AddSeconds(i + 1);
 
-                            fStream.WriteLine($"{floatValue}\t{floatTime}");
+                            fStream.WriteLine($"{floatTime}\t{floatValue}");
                         }
 
                         fStream.Close();
+                    }
                     }
 
                 }
