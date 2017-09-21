@@ -10,25 +10,19 @@ namespace CmgConverter
 
     class Program
     {
-        static float ConvertByteArrayToFloat(byte[] bytes)
-        {
-            if (bytes == null)
-                throw new ArgumentNullException("bytes");
 
-            if (bytes.Length % 4 != 0)
-                throw new ArgumentException
-                      ("bytes does not represent a sequence of floats");
 
-            return BitConverter.ToSingle(bytes, 0);
-        }
 
         static string MakeFileName(string s)
         {
             return Path.GetInvalidFileNameChars().Aggregate(s, (current, c) => current.Replace(c.ToString(), "_"));
         }
 
+
+
         static void Main(string[] args)
         {
+
             string inputPath = args.Length > 0 ? Environment.ExpandEnvironmentVariables(args[0]) : @"..\..\..\exampledata.xml";
             string outputPath = args.Length > 1 ? Environment.ExpandEnvironmentVariables(args[1]) : Environment.CurrentDirectory;
 
@@ -39,38 +33,82 @@ namespace CmgConverter
             {
                 foreach (var child in xElement.Elements("ID"))
                 {
+
                     string id = child.Attribute("val").Value;
+
                     string typeAndFamilyText = child.Element("TypeAndFamilyText").Value;
-                    if (typeAndFamilyText != "MP3") {
+                    string datafilename = Path.GetFileNameWithoutExtension(child.Element("DataFileName").Value);
                     string place = child.Element("Place").Value;
-                    string csvFileName = $"{id}_{place}_{typeAndFamilyText}.csv";
+                    string csvFileName = $"{id}_{place}_{datafilename}.csv";
                     string csvOutputPath = Path.Combine(outputPath, MakeFileName(csvFileName));
-                    DateTime dtBegin = DateTime.Parse(child.Element("DateBegin").Value);
-                    DateTime dtEnd = DateTime.Parse(child.Element("DateEnd").Value);
-                    TimeSpan duration = TimeSpan.FromSeconds(Convert.ToInt32(child.Element("Duration").Value));
-                    var dataElement = child.Element("Data");
-
-                    var bytes = Convert.FromBase64String(dataElement.Value);
-
-                    using (var fStream = File.CreateText(csvOutputPath))
+                    
+                    string[] list = { "LAeq", "LAFeq" }; // List of necessary data
+                    if (list.Contains(datafilename))
+                  
+                  
                     {
-                        fStream.WriteLine("DATE\tVALUE");
+                        DateTime dtBegin = DateTime.Parse(child.Element("DateBegin").Value);
+                        DateTime dtEnd = DateTime.Parse(child.Element("DateEnd").Value);
+                        int duration = Convert.ToInt32(child.Element("Duration").Value);
+                        int period = Convert.ToInt32(child.Element("Period").Value);
+                        int rows = (duration / period);
 
-                        for (int i = 0; i < bytes.Length; i += 4)
+
+                        Console.WriteLine("----------------- ID: " + id + " -------------------");
+                        Console.WriteLine("FamilyText: " + typeAndFamilyText + " Filename: " + datafilename);
+                        Console.WriteLine("DateBegin: " + dtBegin + " DateEnd: " + dtEnd);
+                        Console.WriteLine(" Period: " + period + " Rows: " + rows);
+
+
+                        var bytes = Convert.FromBase64String(child.Element("Data").Value);
+
+                        using (var fStream = File.CreateText(csvOutputPath))
                         {
-                            var floatValue = BitConverter.ToSingle(bytes, i);
-                            var floatTime = dtBegin.AddSeconds(i + 1);
+                            fStream.WriteLine("DATE\tVALUE");
 
-                            fStream.WriteLine($"{floatTime}\t{floatValue}");
+
+                            for (int i = 0, h = 0; i < bytes.Length; i += 4, ++h)
+                            {
+                                var floatValue = BitConverter.ToSingle(bytes, i);
+                                var floatTime = dtBegin.AddSeconds(h);
+
+                                fStream.WriteLine($"{floatTime}\t{floatValue}");
+
+
+                            }
+
+
+                            fStream.Close();
+
                         }
-
-                        fStream.Close();
-                    }
                     }
 
+
+                    if (typeAndFamilyText == "MP3")
+                    {
+
+                       
+                        string mp3datafilename = Path.GetFileName(child.Element("DataFileName").Value);
+
+
+                        var mp3base64string = Convert.FromBase64String(child.Element("Data").Value);
+                        using (FileStream file = File.Create(mp3datafilename))
+                        {
+                            using (BinaryWriter writer = new BinaryWriter(file))
+                            {
+                                for (int i = 0; i < mp3base64string.Length; i += 4)
+                                {
+
+                                    writer.Write((byte)(967.644334f * BitConverter.ToSingle(mp3base64string, i)));
+                                }
+                            }     
+                        }
+                        //Console.ReadLine(); //for debug you can hold window open
+                    }
                 }
             }
+
         }
     }
-
 }
+
